@@ -1,0 +1,105 @@
+<html>
+<head>
+	<style type="text/css">
+		body {
+			font-family: consolas,helvetica;
+			color: #bbb;
+		}
+
+		table {
+			width: 100%;
+			text-align: center;
+			border-collapse: collapse;
+		}
+
+		table tr th {
+			border: 1px solid #5f5f5f;
+		}
+
+		table tr td {
+			border: 1px solid #5f5f5f;
+		}
+
+		#container {
+			background: #4f4f4f;
+			padding: 10px;
+			border-radius: 5px;
+			box-shadow: 0 0 5px #222;
+		}
+	</style>
+	<script type="text/javascript">
+		const TIMEOUT = 5000;
+		const INTERVAL = 10000;
+
+		function get_status() {
+			const xhr = new XMLHttpRequest();
+			xhr.open("POST", "/status");
+			xhr.timeout = TIMEOUT;
+			xhr.onerror = function() {
+				setTimeout(get_status, INTERVAL);
+			};
+			xhr.ontimeout = xhr.onerror;
+			xhr.onabort = xhr.onerror;
+			xhr.onload = function(e) {
+				if (e.target.status === 200) {
+					let devices = [];
+					try {
+						devices = JSON.parse(e.target.responseText);
+					} catch (error) {
+						console.error(error);
+					}
+					for (const device of devices) {
+						const status = document.getElementById(device.id + "_status");
+						if (status && device.online !== null) {
+							if (device.online) {
+								status.innerText = "online";
+								status.style.color = "lime";
+							} else {
+								status.innerText = "offline since " + (
+									device.online_ts === null
+										? "start"
+										: new Date(device.online_ts * 1000).toLocaleDateString(
+											navigator.language,
+											{
+												year: "numeric",
+												month: "2-digit",
+												day: "2-digit",
+												hour: "2-digit",
+												minute: "2-digit",
+												second: "2-digit"
+											}
+										)
+								);
+								status.style.color = "#f55";
+							}
+						}
+					}
+					setTimeout(get_status, INTERVAL);
+				} else {
+					e.target.onerror();
+				}
+			};
+			xhr.send();
+		}
+		get_status();
+	</script>
+</head>
+<body>
+	<div id="container">
+		<table>
+			<tr>
+				<th>Name</td>
+				<th>IP</td>
+				<th style="width: 50%">Status</td>
+			</tr>
+			{% for device in devices %}
+			<tr>
+				<td>{{device.name}}</td>
+				<td>{{device.ip}}</td>
+				<td id="{{device.id}}_status">-</td>
+			</tr>
+			{% endfor %}
+		</table>
+	</div>
+</body>
+</html>
